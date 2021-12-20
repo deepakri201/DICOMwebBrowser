@@ -1,0 +1,81 @@
+# Creating and storing a DICOM file in a DICOMstore 
+
+https://cloud.google.com/healthcare-api/docs/how-tos/dicomweb#healthcare-store-transaction-cli-powershell
+https://cloud.google.com/healthcare-api/docs/how-tos/dicomweb#dicomweb_cli  
+
+gcloud auth application-default login
+
+0. Set up environment, In windows powershell: 
+This already has the Cloud Healthcare API DICOMweb CLI installed, and google sdk 
+
+	activate conda google_sdk 
+
+1. cd to the folder where dcm file is: 
+
+	cd C:\Users\deepa\Documents\SlicerDICOMDatabase\sample_data_DICOM 
+
+2. Create a dataset - https://cloud.google.com/healthcare-api/docs/how-tos/datasets#gcloud 
+	
+	gcloud healthcare datasets create SlicerDICOMWeb_test # the default location is us-central1 
+	# gcloud healthcare datasets create SlicerDICOMWeb_test --location=us-central1 
+	
+2. Get details about dataset - 
+
+	gcloud healthcare datasets describe SlicerDICOMWeb_test --location=us-central1
+	gcloud healthcare datasets list --location=us-central1
+	# gcloud healthcare datasets delete SlicerDICOMWeb_test --location=us-central1
+  
+3. Create a DICOM store - https://cloud.google.com/healthcare-api/docs/how-tos/dicom#api 
+
+	gcloud healthcare dicom-stores create dicom-store-test --dataset=SlicerDICOMWeb_test
+	# gcloud healthcare dicom-stores delete dicom-store-test --dataset=SlicerDICOMWeb_test --location=us-central1
+	
+	
+3b. Get details about DICOM store - 
+
+	gcloud healthcare dicom-stores describe dicom-store-test --dataset=SlicerDICOMWeb_test --location=us-central1
+	gcloud healthcare dicom-stores list --dataset=SlicerDICOMWeb_test --location=us-central1
+	
+4. Store DICOM instance in DICOM store - https://cloud.google.com/healthcare-api/docs/how-tos/dicomweb#healthcare-store-transaction-cli-powershell
+   (make sure to cd to locationw where DICOM data is) 
+   
+	$cred = gcloud auth application-default print-access-token
+	$headers = @{ Authorization = "Bearer $cred" }
+
+	Invoke-WebRequest `
+	  -Method Post `
+	  -Headers $headers `
+	  -ContentType: "application/dicom" `
+	  -InFile 1-01.dcm `
+	  -Uri "https://healthcare.googleapis.com/v1/projects/idc-external-018/locations/us-central1/datasets/SlicerDICOMWeb_test/dicomStores/dicom-store-test/dicomWeb/studies" | Select-Object -Expand Content
+	  
+	This returned (this is correct): 
+		<NativeDicomModel>
+			<DicomAttribute tag="00081190" vr="UR" keyword="RetrieveURL">
+				<Value number="1">https://healthcare.googleapis.com/v1/projects/idc-external-018/locations/us-central1/datasets/SlicerDICOMWeb_test/dicomStores/test1/dicomWeb/studies/1.3.6.1.4.1.14519.5.2.1.3671.4754.121472087445374646718121301133</Value>
+			</DicomAttribute>
+			<DicomAttribute tag="00081199" vr="SQ" keyword="ReferencedSOPSequence">
+				<Item number="1"><DicomAttribute tag="00081150" vr="UI" keyword="ReferencedSOPClassUID">
+				<Value number="1">1.2.840.10008.5.1.4.1.1.4</Value>
+			</DicomAttribute>
+			<DicomAttribute tag="00081155" vr="UI" keyword="ReferencedSOPInstanceUID">
+				<Value number="1">1.3.6.1.4.1.14519.5.2.1.3671.4754.114727488339173336591371708019</Value>
+			</DicomAttribute>
+			<DicomAttribute tag="00081190" vr="UR" keyword="RetrieveURL">
+				<Value number="1">https://healthcare.googleapis.com/v1/projects/idc-external-018/locations/us-central1/datasets/SlicerDICOMWeb_test/dicomStores/test1/dicomWeb/studies/1.3.6.1.4.1.14519.5.2.1.3671.4754.121472087445374646718121301133/series/1.3.6.1.4.1.14519.5.2.1.3671.4754.983460207615355998147518323000/instances/1.3.6.1.4.1.14519.5.2.1.3671.4754.114727488339173336591371708019</Value></DicomAttribute></Item>
+				</DicomAttribute>
+			</NativeDicomModel>
+		
+4b. Another way to store a DICOM instance in the data store is to create a bucket, add DICOM data to the bucket, 
+    and then import data from that bucket into the DICOM store. 
+    
+    A. Use gsutil to make bucket:
+       gsutil mb -b on -l us-central1 gs://slicer-dicomweb-bucket 
+    B. Use gsutil to copy DICOM data into bucket
+       gsutil cp C:\Users\deepa\Documents\SlicerDICOMDatabase\sample_data_DICOM\1-01.dcm gs://slicer-dicomweb-bucket 
+    C. List contents of bucket to check 
+       gsutil ls -r gs://slicer-dicomweb-bucket/** 
+    D. I can manually add this bucket to the dicom store using the Healthcare API. 
+       Instead, use the import_dicom_instance.py script. 
+
+			 
