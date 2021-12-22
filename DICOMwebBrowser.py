@@ -32,7 +32,7 @@ print ('started script')
 import os 
 import sys
 import numpy as np
-import matplotlib.pyplot as plt 
+# import matplotlib.pyplot as plt 
 import re 
 import json 
 import SimpleITK as sitk 
